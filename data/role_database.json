@@ -1,0 +1,62 @@
+[
+  {
+    "title": "Software Engineer",
+    "keywords": "python java javascript react node.js sql git docker aws",
+    "requirements": "programming algorithms data structures software development",
+    "description": "Develop software applications and systems"
+  },
+  {
+    "title": "Data Scientist",
+    "keywords": "python r sql machine learning statistics pandas numpy scikit-learn",
+    "requirements": "statistics ml algorithms data analysis modeling",
+    "description": "Analyze data and build predictive models"
+  },
+  {
+    "title": "Product Manager",
+    "keywords": "product strategy agile scrum user research analytics roadmap",
+    "requirements": "leadership communication analytics product development",
+    "description": "Lead product development and strategy"
+  },
+  {
+    "title": "UX Designer",
+    "keywords": "user research wireframes prototyping figma sketch adobe",
+    "requirements": "design thinking user empathy visual design",
+    "description": "Design user experiences and interfaces"
+  },
+  {
+    "title": "DevOps Engineer",
+    "keywords": "aws docker kubernetes ci/cd infrastructure terraform jenkins",
+    "requirements": "cloud platforms automation monitoring deployment",
+    "description": "Manage infrastructure and deployment"
+  },
+  {
+    "title": "Frontend Developer",
+    "keywords": "javascript react vue angular html css typescript",
+    "requirements": "web development user interface responsive design",
+    "description": "Build user-facing web applications"
+  },
+  {
+    "title": "Backend Developer",
+    "keywords": "python java c# node.js sql nosql apis microservices",
+    "requirements": "server development database design api development",
+    "description": "Develop server-side applications and APIs"
+  },
+  {
+    "title": "Full Stack Developer",
+    "keywords": "javascript python react node.js sql html css",
+    "requirements": "full stack development frontend backend integration",
+    "description": "Develop complete web applications"
+  },
+  {
+    "title": "Machine Learning Engineer",
+    "keywords": "python tensorflow pytorch scikit-learn mlops aws gcp",
+    "requirements": "machine learning model deployment mlops",
+    "description": "Build and deploy machine learning models"
+  },
+  {
+    "title": "Cloud Engineer",
+    "keywords": "aws azure gcp docker kubernetes terraform infrastructure",
+    "requirements": "cloud platforms infrastructure automation",
+    "description": "Manage cloud infrastructure and services"
+  }
+] 

@@ -25,11 +25,7 @@ from .models import (
     ResumeBlock, ContactInfo
 )
 
-# Gemini LLM imports
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
+from .parser_llm import ResumeSectionLLMCorrector
 
 # Load .env for API keys
 load_dotenv()
@@ -94,9 +90,8 @@ class ResumeParser:
         self.email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
         self.phone_pattern = r'(\+?1?[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})'
         self.linkedin_pattern = r'linkedin\.com/in/[a-zA-Z0-9-]+'
-        self.use_llm_correction = use_llm_correction and GEMINI_API_KEY is not None and genai is not None
-        if self.use_llm_correction:
-            genai.configure(api_key=GEMINI_API_KEY)
+        self.use_llm_correction = use_llm_correction
+        self.llm_corrector = ResumeSectionLLMCorrector() if use_llm_correction else None
     
     def parse_file(self, file_path: str) -> ParseResult:
         """Parse resume from file (PDF, DOCX, TXT)"""
@@ -208,11 +203,10 @@ class ResumeParser:
             )
             
             # LLM post-processing for section correction
-            if self.use_llm_correction:
-                llm_result = self._llm_section_correction(parsed_resume)
+            if self.use_llm_correction and self.llm_corrector and self.llm_corrector.enabled:
+                llm_result = self.llm_corrector.correct_sections(parsed_resume)
                 if llm_result.success:
                     return llm_result
-                # If LLM fails, fall back to original
                 else:
                     return ParseResult(
                         success=True,
@@ -335,90 +329,3 @@ class ResumeParser:
                 found_keywords.append(keyword)
         
         return list(set(found_keywords))  # Remove duplicates 
-
-    def _llm_section_correction(self, parsed_resume: ParsedResume) -> ParseResult:
-        """Call Gemini Pro to verify/correct section splits"""
-        if not self.use_llm_correction:
-            return ParseResult(success=True, resume=parsed_resume, messages=["LLM correction disabled"])
-        try:
-            prompt = self._build_llm_prompt(parsed_resume)
-            model = genai.GenerativeModel("models/gemini-2.0-flash")
-            response = model.generate_content(prompt)
-            # Extract first JSON object from response
-            import re, json
-            text = response.text.strip()
-            if not text:
-                raise ValueError("Empty response from Gemini LLM.")
-            # Find first JSON object in the response
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if not match:
-                raise ValueError(f"No JSON object found in LLM response: {text[:200]}")
-            json_str = match.group(0)
-            llm_data = json.loads(json_str)
-            # Rebuild ParsedResume from LLM output
-            corrected_resume = self._parsed_resume_from_llm(llm_data, parsed_resume)
-            return ParseResult(
-                success=True,
-                resume=corrected_resume,
-                messages=["Sections verified/corrected by Gemini Pro"]
-            )
-        except Exception as e:
-            return ParseResult(
-                success=False,
-                resume=parsed_resume,
-                errors=[f"LLM correction error: {str(e)}"]
-            )
-    def _build_llm_prompt(self, parsed_resume: ParsedResume) -> str:
-        """Build prompt for Gemini to verify/correct sections"""
-        context_text = parsed_resume.raw_text[:5000]
-        section_summary = "\n".join([
-            f"{section.value}: {len(blocks)} blocks" for section, blocks in parsed_resume.sections.items() if blocks
-        ])
-        prompt = f"""
-You are an expert resume parser. Given the following raw resume text and the current section splits, verify if the sections are correct. If not, return a corrected JSON structure with the following format:
-{{
-  "sections": {{
-    "summary": [{{"content": "...", "keywords": ["...", ...]}}],
-    "experience": [{{"content": "...", "keywords": ["...", ...]}}],
-    ...
-  }}
-}}
-
-IMPORTANT: Only output valid JSON. Do not include any explanation, markdown, or text before or after the JSON. Your response must start with '{{' and end with '}}'.
-
-Raw Resume Text (truncated):
-{context_text}
-
-Current Section Summary:
-{section_summary}
-
-If the sections are correct, return the same structure. Only output valid JSON. Do not include any explanation.
-"""
-        return prompt
-    def _parsed_resume_from_llm(self, llm_data: dict, original: ParsedResume) -> ParsedResume:
-        """Rebuild ParsedResume from LLM output, fallback to original for missing fields"""
-        # Only update sections and keywords
-        new_sections = {}
-        for section in ResumeSection:
-            section_key = section.value
-            blocks = []
-            if (
-                "sections" in llm_data and
-                section_key in llm_data["sections"]
-            ):
-                for block in llm_data["sections"][section_key]:
-                    blocks.append(ResumeBlock(
-                        content=block.get("content", ""),
-                        section=section,
-                        keywords=block.get("keywords", [])
-                    ))
-            new_sections[section] = blocks
-        # Rebuild all_keywords
-        all_keywords = list({kw for blocks in new_sections.values() for block in blocks for kw in block.keywords})
-        return ParsedResume(
-            raw_text=original.raw_text,
-            contact_info=original.contact_info,
-            sections=new_sections,
-            all_keywords=all_keywords,
-            file_path=original.file_path
-        ) 
